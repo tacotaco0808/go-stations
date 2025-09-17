@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -15,7 +17,9 @@ func main() {
 		log.Fatalln("main: failed to exit successfully, err =", err)
 	}
 }
-
+func handler(w http.ResponseWriter,r *http.Request){
+		fmt.Fprint(w,"Hello,World!")
+	}
 func realMain() error {
 	// config values
 	const (
@@ -49,8 +53,10 @@ func realMain() error {
 
 	// NOTE: 新しいエンドポイントの登録はrouter.NewRouterの内部で行うようにする
 	mux := router.NewRouter(todoDB)
-
 	// TODO: サーバーをlistenする
+	
+	mux.HandleFunc("/",handler)
+	http.ListenAndServe(port,mux)
 
 	return nil
 }
