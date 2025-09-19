@@ -20,7 +20,9 @@ func NewTODOService(db *sql.DB) *TODOService {
 }
 
 // CreateTODO creates a TODO on DB.
+// service ではおもにデータベースデータベースとの処理
 func (s *TODOService) CreateTODO(ctx context.Context, subject, description string) (*model.TODO, error) {
+	//DBにデータを入れつつ、TODOmodelをレスポンスで返す
 	const (
 		insert  = `INSERT INTO todos(subject, description) VALUES(?, ?)`
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`

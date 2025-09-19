@@ -5,11 +5,11 @@ import "time"
 type (
 	// A TODO expresses ...
 	TODO struct {
-		ID          int
-		Subject     string
-		Description string
-		CreatedAt  time.Time
-		UpdatedAt  time.Time
+		ID          int		 `json:"id"`
+		Subject     string	`json:"subject"`
+		Description string	`json:"description"`
+		CreatedAt  time.Time	`json:"created_at"`
+		UpdatedAt  time.Time	`json:"updated_at"`
 	}
 
 	// A CreateTODORequest expresses ...

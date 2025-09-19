@@ -17,6 +17,7 @@ func NewHealthzHandler() *HealthzHandler {
 }
 
 // ServeHTTP implements http.Handler interface.
+// NewHealtzHandlerでインスタンスを生成した後、mux.Handleによって自動で下のServeHTTPメソッドが呼び出される
 func (h *HealthzHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	response := &model.HealthzResponse{
 		Message: "OK",

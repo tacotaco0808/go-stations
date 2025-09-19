@@ -2,6 +2,9 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
+	"log"
+	"net/http"
 
 	"github.com/TechBowl-japan/go-stations/model"
 	"github.com/TechBowl-japan/go-stations/service"
@@ -21,8 +24,11 @@ func NewTODOHandler(svc *service.TODOService) *TODOHandler {
 
 // Create handles the endpoint that creates the TODO.
 func (h *TODOHandler) Create(ctx context.Context, req *model.CreateTODORequest) (*model.CreateTODOResponse, error) {
-	_, _ = h.svc.CreateTODO(ctx, "", "")
-	return &model.CreateTODOResponse{}, nil
+	todo, err := h.svc.CreateTODO(ctx, req.Subject, req.Description)
+	if err != nil {
+		return nil,err
+	}
+	return &model.CreateTODOResponse{TODO: *todo }, nil
 }
 
 // Read handles the endpoint that reads the TODOs.
@@ -41,4 +47,33 @@ func (h *TODOHandler) Update(ctx context.Context, req *model.UpdateTODORequest) 
 func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) (*model.DeleteTODOResponse, error) {
 	_ = h.svc.DeleteTODO(ctx, nil)
 	return &model.DeleteTODOResponse{}, nil
+}
+
+//routerによって自動で下記のメソッドが呼び出される
+func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
+	if r.Method == http.MethodPost{//POSTリクエストの場合
+		var m *model.CreateTODORequest//json形式のものをでコードしたデータが入っている
+		err := json.NewDecoder(r.Body).Decode(&m)//r.bodyにはjsonデータが入ってる
+		if err != nil{
+			log.Println(err)
+			return
+		}
+		if m.Subject == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		result,err := h.Create(r.Context(),m)// r.Context()メタデータ情報
+		if err != nil{
+			log.Println(err)
+			return
+		}
+		err = json.NewEncoder(w).Encode(result)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+	}else{
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
 }
