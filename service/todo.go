@@ -14,6 +14,7 @@ type TODOService struct {
 
 // NewTODOService returns new TODOService.
 func NewTODOService(db *sql.DB) *TODOService {
+	//ここでDB接続をもつインスタンスを生成
 	return &TODOService{
 		db: db,
 	}
@@ -36,7 +37,7 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 	if err != nil{
 		return nil, err
 	}
-	todo.ID = int(id)
+	todo.ID = id
 	err = s.db.QueryRowContext(ctx,confirm,id).Scan(
 		&todo.Subject,
 		&todo.Description,
@@ -46,7 +47,7 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 	if err != nil{
 		return  nil,err
 	}
-
+	
 	return &todo, nil
 }
 
@@ -62,12 +63,35 @@ func (s *TODOService) ReadTODO(ctx context.Context, prevID, size int64) ([]*mode
 
 // UpdateTODO updates the TODO on DB.
 func (s *TODOService) UpdateTODO(ctx context.Context, id int64, subject, description string) (*model.TODO, error) {
+	//DB書き換え処理
 	const (
 		update  = `UPDATE todos SET subject = ?, description = ? WHERE id = ?`
 		confirm = `SELECT subject, description, created_at, updated_at FROM todos WHERE id = ?`
 	)
-
-	return nil, nil
+	res,err := s.db.ExecContext(ctx,update,subject,description,id)
+	if err != nil {
+		return nil,err
+	}
+	rows,err := res.RowsAffected()
+	if err != nil {
+		return nil,err
+	}
+	if rows == 0 {
+		return nil,&model.ErrNotFound{}
+	}
+	//書き換え後のデータを整理する処理
+	var todo model.TODO
+	todo.ID = id
+	err = s.db.QueryRowContext(ctx,confirm,id).Scan(
+		&todo.Subject,
+		&todo.Description,
+        &todo.CreatedAt,
+        &todo.UpdatedAt,
+	)
+	if err != nil {
+		return nil,err
+	}
+	return &todo, nil
 }
 
 // DeleteTODO deletes TODOs on DB by ids.
