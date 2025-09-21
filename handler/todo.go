@@ -39,8 +39,11 @@ func (h *TODOHandler) Read(ctx context.Context, req *model.ReadTODORequest) (*mo
 
 // Update handles the endpoint that updates the TODO.
 func (h *TODOHandler) Update(ctx context.Context, req *model.UpdateTODORequest) (*model.UpdateTODOResponse, error) {
-	_, _ = h.svc.UpdateTODO(ctx, 0, "", "")
-	return &model.UpdateTODOResponse{}, nil
+	todo, err := h.svc.UpdateTODO(ctx,req.ID,req.Subject,req.Description)
+	if err != nil{
+		return nil,err
+	}
+	return &model.UpdateTODOResponse{TODO:*todo}, nil
 }
 
 // Delete handles the endpoint that deletes the TODOs.
@@ -51,29 +54,54 @@ func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) 
 
 //routerによって自動で下記のメソッドが呼び出される
 func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request){
-	if r.Method == http.MethodPost{//POSTリクエストの場合
-		var m *model.CreateTODORequest//json形式のものをでコードしたデータが入っている
-		err := json.NewDecoder(r.Body).Decode(&m)//r.bodyにはjsonデータが入ってる
-		if err != nil{
-			log.Println(err)
-			return
-		}
-		if m.Subject == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		result,err := h.Create(r.Context(),m)// r.Context()メタデータ情報
-		if err != nil{
-			log.Println(err)
-			return
-		}
-		err = json.NewEncoder(w).Encode(result)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+	switch r.Method {
+		case http.MethodPost://POSTリクエストの場合
+			var m *model.CreateTODORequest//json形式のものをでコードしたデータが入っている
+			err := json.NewDecoder(r.Body).Decode(&m)//r.bodyにはjsonデータが入ってる
+			if err != nil{
+				log.Println(err)
+				return
+			}
+			if m.Subject == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			//ここでresultにレスポンス用データを作成&DB操作
+			result,err := h.Create(r.Context(),m)// r.Context()メタデータ情報
+			if err != nil{
+				log.Println(err)
+				return
+			}
+			//ここでレスポンスを返す
+			err = json.NewEncoder(w).Encode(result)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-	}else{
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		case http.MethodPut:
+			var m *model.UpdateTODORequest
+			err := json.NewDecoder(r.Body).Decode(&m)
+			if err != nil{
+				log.Println(err)
+				return
+			}
+			if m.ID == 0 || m.Subject == ""{
+				w.WriteHeader(http.StatusBadRequest)
+				return 
+			}
+			result,err := h.Update(r.Context(),m)
+			if err != nil{
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			err = json.NewEncoder(w).Encode(result)
+			if err != nil{
+				log.Println(err)
+				return
+			}
+			
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 }
