@@ -53,40 +53,43 @@ func (s *TODOService) CreateTODO(ctx context.Context, subject, description strin
 
 // ReadTODO reads TODOs on DB.
 func (s *TODOService) ReadTODO(ctx context.Context, prevID, size int64) ([]*model.TODO, error) {
-	const (
-		read       = `SELECT id, subject, description, created_at, updated_at FROM todos ORDER BY id DESC LIMIT ?`
-		readWithID = `SELECT id, subject, description, created_at, updated_at FROM todos WHERE id < ? ORDER BY id DESC LIMIT ?`
-	)
+    const (
+        read       = `SELECT id, subject, description, created_at, updated_at FROM todos ORDER BY id DESC`
+        readWithID = `SELECT id, subject, description, created_at, updated_at FROM todos WHERE id < ? ORDER BY id DESC`
+    )
 
-	if size == 0{
-		return []*model.TODO{},nil
-	}
+    var rows *sql.Rows
+    var err error
+    if size == 0 {
+        // LIMIT句なしで全件取得
+        if prevID == 0 {
+            rows, err = s.db.QueryContext(ctx, read)
+        } else {
+            rows, err = s.db.QueryContext(ctx, readWithID, prevID)
+        }
+    } else {
+        // LIMIT句あり
+        if prevID == 0 {
+            rows, err = s.db.QueryContext(ctx, read+" LIMIT ?", size)
+        } else {
+            rows, err = s.db.QueryContext(ctx, readWithID+" LIMIT ?", prevID, size)
+        }
+    }
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
 
-	var rows *sql.Rows
-	var err error
-	if prevID == 0{//prevIDなし
-		rows,err = s.db.QueryContext(ctx,read,size)
-		
-	}else{//prevIDあり
-		rows,err = s.db.QueryContext(ctx,readWithID,prevID,size)
-		
-	}
-	if err != nil{
-		return nil,err
-	}
-	defer rows.Close() // rowsの使用が終わったら自動でClose
-
-	
-	todos := []*model.TODO{}//参照が配列に保存される。もし値型であると、保存した時点のものがコピーされる
-	for rows.Next(){
-		var todo model.TODO
-		err := rows.Scan(&todo.ID, &todo.Subject, &todo.Description, &todo.CreatedAt, &todo.UpdatedAt)
-		if err != nil{
-			return nil,err
-		}
-		todos = append(todos, &todo)
-	}
-	return todos, nil
+    todos := []*model.TODO{}
+    for rows.Next() {
+        var todo model.TODO
+        err := rows.Scan(&todo.ID, &todo.Subject, &todo.Description, &todo.CreatedAt, &todo.UpdatedAt)
+        if err != nil {
+            return nil, err
+        }
+        todos = append(todos, &todo)
+    }
+    return todos, nil
 }
 
 // UpdateTODO updates the TODO on DB.
